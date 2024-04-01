@@ -13,6 +13,10 @@ use kernel::sync::Arc;
 use kernel::{pci, device, driver, bindings, net, dma, c_str};
 use kernel::device::RawDevice;
 use kernel::sync::SpinLock;
+use kernel::net::DeviceOperations;
+use kernel::driver::DeviceRemoval;
+use kernel::io_mem::IoMem;
+use core::ops::Deref;
 
 
 
@@ -293,11 +297,16 @@ impl kernel::irq::Handler for E1000InterruptHandler {
 /// the private data for the adapter
 struct E1000DrvPrvData {
     _netdev_reg: net::Registration<NetDevice>,
+    bars: i32,
 }
 
 impl driver::DeviceRemoval for E1000DrvPrvData {
     fn device_remove(&self) {
         pr_info!("Rust for linux e1000 driver demo (device_remove)\n");
+
+        let device = self._netdev_reg.dev_get();
+        device.netif_stop_queue();
+        device.netif_carrier_on();
     }
 }
 
@@ -462,12 +471,18 @@ impl pci::Driver for E1000Drv {
             E1000DrvPrvData{
                 // Must hold this registration, or the device will be removed.
                 _netdev_reg: netdev_reg,
+                bars,
             }
         )?)
     }
 
-    fn remove(data: &Self::Data) {
+    fn remove(dev: &mut pci::Device, data: &Self::Data) {
         pr_info!("Rust for linux e1000 driver demo (remove)\n");
+
+        let bars = data.bars;
+        DeviceRemoval::device_remove(data);
+        dev.release_selected_regions(bars);
+        dev.disable_device();
     }
 }
 struct E1000KernelMod {
