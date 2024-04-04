@@ -39,7 +39,7 @@ impl file::Operations for RustFile {
         )
     }
 
-    fn write(_this: &Self,_file: &file::File,_reader: &mut impl kernel::io_buffer::IoBufferReader,_offset:u64,) -> Result<usize> {
+    fn write(this: &Self,_file: &file::File,reader: &mut impl kernel::io_buffer::IoBufferReader,_offset:u64) -> Result<usize> {
         let buff_size = reader.len().min(GLOBALMEM_SIZE);
         {
             let mut inner = this.inner.lock();
@@ -49,7 +49,7 @@ impl file::Operations for RustFile {
         Ok(buff_size)
     }
 
-    fn read(_this: &Self,_file: &file::File,_writer: &mut impl kernel::io_buffer::IoBufferWriter,_offset:u64,) -> Result<usize> {
+    fn read(this: &Self,_file: &file::File,writer: &mut impl kernel::io_buffer::IoBufferWriter,offset:u64) -> Result<usize> {
         if writer.is_empty() {
             return Ok(0);
         }
